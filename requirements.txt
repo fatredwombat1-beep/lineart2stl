@@ -8,3 +8,4 @@ scikit-image==0.26.0
 shapely==2.2.0
 trimesh==5.2.2
 manifold3d==3.5.5
+onnxruntime==1.32.0

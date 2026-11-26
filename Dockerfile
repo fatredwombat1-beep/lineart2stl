@@ -1,10 +1,18 @@
+# ---- stage 1: fetch the line-art model and convert it to ONNX (PyTorch only lives here)
+FROM python:3.12-slim AS model
+RUN pip install --no-cache-dir "torch>=2.4,<2.16" --index-url https://download.pytorch.org/whl/cpu && \
+    pip install --no-cache-dir onnx==1.23.2 numpy
+COPY tools/export_lineart.py /tmp/export_lineart.py
+RUN python /tmp/export_lineart.py /models && rm -f /models/*.pth && ls -la /models
+
+# ---- stage 2: the app
 # Python 3.12: mediapipe 0.10.21 is the last release that bundles the
-# face/segmentation models used by photo mode.
+# person-segmentation/face models used by photo mode.
 FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
     DATA_DIR=/data KEEP_HOURS=24 MAX_UPLOAD_MB=25 MAX_CONCURRENT=2 \
-    MPLCONFIGDIR=/tmp/mpl GLOG_minloglevel=2 TF_CPP_MIN_LOG_LEVEL=2
+    MODEL_DIR=/app/models MPLCONFIGDIR=/tmp/mpl GLOG_minloglevel=2 TF_CPP_MIN_LOG_LEVEL=2
 
 WORKDIR /app
 COPY requirements.txt .
@@ -13,11 +21,13 @@ COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt && \
     pip uninstall -y opencv-contrib-python opencv-python jax jaxlib && \
     pip install --no-cache-dir --no-deps --force-reinstall opencv-contrib-python-headless==4.11.0.86 && \
-    python -c "import cv2, mediapipe, skimage, shapely, trimesh, manifold3d; mediapipe.solutions.face_mesh"
+    python -c "import cv2, mediapipe, onnxruntime, skimage, shapely, trimesh, manifold3d; mediapipe.solutions.face_mesh"
 
 COPY app/ /app/
+COPY --from=model /models /app/models
 RUN useradd -u 99 -g 100 -M -s /usr/sbin/nologin app && \
-    mkdir -p /data && chown -R 99:100 /data
+    mkdir -p /data && chown -R 99:100 /data && \
+    python -c "import onnxruntime as o; [o.InferenceSession(f'/app/models/lineart_{s}.onnx') for s in ('fine','bold')]; print('models ok')"
 
 USER 99:100
 VOLUME /data

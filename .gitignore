@@ -2,3 +2,6 @@ __pycache__/
 *.pyc
 *.stl
 .env
+app/models/
+*.onnx
+*.pth

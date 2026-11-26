@@ -10,12 +10,14 @@ What it does to the image:
 5. Joins every floating piece (eyes, logos and so on) to the main body with short bridges (minimum spanning tree, default 1 mm wide).
 6. Extrudes the result into a watertight STL and makes a preview, with the bridges shown in red.
 
-**Photo mode** turns a photo into a colouring-page style drawing before the steps above:
-- **Faces** are found with MediaPipe, and the jawline, brows, eyes, irises, nose and lips are drawn as clean lines from the face landmarks.
-- **People** get a bold outline from person segmentation, plus some interior detail (clothing folds and hands), controlled by *Detail on people*.
-- **The background** is reduced to a few long lines (*Background lines*, 0 = none), so the scene is hinted at rather than traced.
-
-Photo mode works best on photos with a few people who are reasonably close to the camera. Very small faces get simplified features.
+**Photo mode** turns a photo into a colouring-page style drawing before the steps above.
+- **AI fine / AI bold** (default): the "Informative Drawings" line-art network, the same model used as ControlNet's
+  "lineart" processor, draws the photo as line art, including faces and hair. The weights (about 17 MB each) are downloaded from
+  Hugging Face and converted to ONNX **while the image builds**, so the server needs internet access during
+  `docker build`. It runs on the CPU and takes a few seconds per image.
+  - *Detail* sets the resolution the network works at. Higher gives finer lines and more of them.
+  - *Background lines* uses person segmentation to thin out lines that aren't on a person (0 = people only, 10 = everything).
+- **Classic**: the earlier approach, with no network. Faces are drawn from MediaPipe landmarks and people are outlined.
 
 ## Run on Unraid (shows in the Docker tab)
 

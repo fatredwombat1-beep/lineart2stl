@@ -61,9 +61,15 @@
           <label><input type="radio" name="mode" value="photo"><span>Photo</span></label>
         </div>
         <div id="photoOpts">
-          <div class="row"><label>Detail on people (1–10)</label><input type="number" name="detail" value="5" min="1" max="10" step="1"></div>
+          <div class="row"><label>Line style</label>
+            <select name="style" style="width:120px;padding:5px;border:1px solid var(--line);border-radius:6px;background:var(--card);color:inherit;font:inherit">
+              <option value="fine" selected>AI – fine</option>
+              <option value="bold">AI – bold</option>
+              <option value="classic">Classic</option>
+            </select></div>
+          <div class="row"><label>Detail (1–10)</label><input type="number" name="detail" value="5" min="1" max="10" step="1"></div>
           <div class="row"><label>Background lines (0–10)</label><input type="number" name="background" value="3" min="0" max="10" step="1"></div>
-          <p class="hint">Faces are drawn from detected landmarks; people get a bold outline; the background is reduced to a few long lines.</p>
+          <p class="hint">AI styles draw the photo as line art with a neural network. Higher detail = finer, more lines. Background 0 keeps only the people; 10 keeps everything.</p>
         </div>
       </fieldset>
 
@@ -134,7 +140,7 @@ $('#f').onsubmit = async ev => {
         <span>Specks removed <b>${s.specks_removed}</b></span>
         <span>Islands bridged <b>${s.islands_joined}</b></span>
         <span>Single piece <b>${s.single_piece ? 'yes' : 'no'}</b></span>
-        ${s.photo ? `<span>Faces found <b>${s.photo.faces}</b></span>` : ''}
+        ${s.photo && s.photo.faces !== undefined ? `<span>Faces found <b>${s.photo.faces}</b></span>` : ''}
       </div>
       ${s.thin_check !== 'ok' ? `<div class="warn">⚠ ${s.thin_check}</div>` : ''}
       <a class="dl" href="${j.stl_url}" download>Download STL</a>`;

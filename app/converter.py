@@ -17,6 +17,7 @@ from shapely import affinity, make_valid
 from shapely.geometry import LineString, MultiPolygon, Polygon, box
 from shapely.ops import nearest_points, unary_union
 
+import lineart_model
 from portrait import photo_to_mask
 
 
@@ -34,6 +35,7 @@ class Settings:
     absorb_border: bool = True   # merge a border already drawn in the image into the frame
     detail: int = 5              # photo mode only: detail on people 1..10
     background: int = 3          # photo mode only: background lines 0 (none)..10
+    style: str = "fine"          # photo mode only: "fine" / "bold" (AI line art) or "classic"
 
     def clamp(self) -> "Settings":
         self.mode = "photo" if self.mode == "photo" else "lineart"
@@ -45,6 +47,7 @@ class Settings:
         self.frame_mm = min(max(self.frame_mm, 0), 50)
         self.detail = int(min(max(self.detail, 1), 10))
         self.background = int(min(max(self.background, 0), 10))
+        self.style = self.style if self.style in ("fine", "bold", "classic") else "fine"
         return self
 
 
@@ -73,7 +76,11 @@ def _mask_from_image(data: bytes, s: Settings) -> np.ndarray:
         _, mask = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     else:
         est_px_mm = max(s.width_mm - 2 * s.frame_mm, 10) / img.shape[1]
-        mask, info = photo_to_mask(img, s.detail, s.background, est_px_mm)
+        if s.style != "classic" and lineart_model.available(s.style):
+            mask, info = lineart_model.photo_to_mask(img, s.detail, s.background, est_px_mm, s.style)
+        else:
+            mask, info = photo_to_mask(img, s.detail, s.background, est_px_mm)
+            info["engine"] = "classic"
         s._photo_info = info
     # remove single-pixel noise, close pinholes
     k3 = np.ones((3, 3), np.uint8)

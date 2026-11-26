@@ -56,6 +56,7 @@ def api_convert(
     absorb_border: bool = Form(True),
     detail: int = Form(5),
     background: int = Form(3),
+    style: str = Form("fine"),
 ):
     _cleanup()
     data = file.file.read(int(MAX_UPLOAD_MB * 1024 * 1024) + 1)
@@ -64,7 +65,7 @@ def api_convert(
     s = Settings(mode=mode, width_mm=width_mm, thickness_mm=thickness_mm, thicken_mm=thicken_mm,
                  min_speck_mm2=min_speck_mm2, bridge_mm=bridge_mm, frame_mm=frame_mm,
                  invert=invert, crop=crop, absorb_border=absorb_border, detail=detail,
-                 background=background)
+                 background=background, style=style)
     if not _slots.acquire(timeout=120):
         raise HTTPException(503, "Server busy - try again shortly.")
     try:
