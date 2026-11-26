@@ -38,7 +38,10 @@ Because the image is built locally, Unraid's update check shows "not available".
 ```bash
 cd /mnt/user/appdata/lineart2stl-src && git pull && docker build -t lineart2stl:latest .
 ```
-Then click the container → **Edit** → **Apply** (no changes needed) to recreate it on the new image.
+Then recreate the container so it uses the new image. Clicking **Edit → Apply** with no changes may leave
+the old image running. Either remove the container and re-add it from the *my-lineart2stl* template,
+or change any setting in Edit before you click Apply. To check which image is running:
+`docker ps --filter name=lineart2stl --format '{{.Image}}'`. It should not be an old image ID.
 
 ### Alternative: Docker Compose
 Unraid doesn't come with Compose. Install the **Compose Manager Plus** plugin from Community Apps first,
