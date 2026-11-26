@@ -28,6 +28,11 @@ if _mp_ok:
         "lips": _FM.FACEMESH_LIPS,
     }
 NOSE_BOTTOM = [64, 98, 97, 2, 326, 327, 294]
+NOSE_SMALL = [98, 97, 2, 326, 327]
+R_EYE_UPPER = [33, 246, 161, 160, 159, 158, 157, 173, 133]
+L_EYE_UPPER = [362, 398, 384, 385, 386, 387, 388, 466, 263]
+R_BROW = [70, 63, 105, 66, 107]
+L_BROW = [336, 296, 334, 293, 300]
 NOSE_BRIDGE = [168, 6, 197, 195, 5]
 MOUTH_LINE = [78, 191, 80, 81, 82, 13, 312, 311, 310, 415, 308]
 
@@ -148,11 +153,33 @@ def _clean(lines, min_len_px):
     return good[lab]
 
 
-def photo_to_mask(bgr: np.ndarray, detail: int = 5, background: int = 3) -> np.ndarray:
-    """detail: 1..10 detail on people; background: 0 (none) .. 10 (lots)."""
+def _lower_oval(pts, chain, cut_y):
+    """Split the face-oval loop into runs that lie below cut_y (jaw and cheeks)."""
+    runs, cur = [], []
+    for i in chain:
+        if pts[i, 1] >= cut_y:
+            cur.append(i)
+        elif cur:
+            runs.append(cur); cur = []
+    if cur:
+        runs.append(cur)
+    # the loop may start mid-run; join first and last if they wrap around
+    if len(runs) > 1 and chain[0] == chain[-1] and runs[0][0] == chain[0] and runs[-1][-1] == chain[-1]:
+        runs[0] = runs.pop() + runs[0]
+    return [r for r in runs if len(r) > 2]
+
+
+def photo_to_mask(bgr: np.ndarray, detail: int = 5, background: int = 3, px_mm: float = 0.1):
+    """detail: 1..10 detail on people; background: 0 (none) .. 10 (lots).
+    px_mm: printed size of one pixel, so line widths can be set in millimetres."""
     h, w = bgr.shape[:2]
     L = max(h, w)
-    stroke = max(3, round(L / 380))
+    mm = lambda v: max(2, int(round(v / px_mm)))   # mm -> px
+    # widths before the converter's global thickening (+0.4 mm by default)
+    stroke = mm(0.5)          # general lines
+    outline = mm(0.8)         # person silhouette
+    feat = mm(0.4)            # facial features
+
     rgb = cv2.cvtColor(bgr, cv2.COLOR_BGR2RGB)
     gray = cv2.cvtColor(bgr, cv2.COLOR_BGR2GRAY)
     gray = cv2.bilateralFilter(gray, 9, 40, 9)
@@ -163,61 +190,68 @@ def photo_to_mask(bgr: np.ndarray, detail: int = 5, background: int = 3) -> np.n
     if person is None:
         person = np.zeros((h, w), np.uint8)
 
-    # face regions (filled ovals) - drawn from landmarks, so no photo edges there
-    face_fill = np.zeros((h, w), np.uint8)
+    # Lower face (below the eyebrows) is drawn from landmarks, so photo edges are
+    # removed there. Forehead and hair keep their photo lines.
+    lower_face = np.zeros((h, w), np.uint8)
     for pts in faces:
+        brow_y = pts[R_BROW + L_BROW, 1].mean()
         for ch in _CHAINS["oval"]:
-            cv2.fillPoly(face_fill, [pts[ch].round().astype(np.int32)], 255)
-    person_r = (person > 0) & (face_fill == 0)
-    bg_r = (person == 0) & (face_fill == 0)
-    # when no person was found, treat the whole frame as "subject" at reduced detail
+            poly = pts[ch].copy()
+            poly[:, 1] = np.maximum(poly[:, 1], brow_y)
+            cv2.fillPoly(lower_face, [poly.round().astype(np.int32)], 255)
+    person_r = (person > 0) & (lower_face == 0)
+    bg_r = (person == 0) & (lower_face == 0)
     if not person.any():
-        person_r, bg_r = face_fill == 0, np.zeros((h, w), bool)
+        person_r, bg_r = lower_face == 0, np.zeros((h, w), bool)
 
     sigma = L / 900
     in_lines = _dog_lines(gray, sigma, person_r, 2.0 + 1.3 * detail)
-    in_lines = _clean(in_lines, L / 60)
+    in_lines = _clean(in_lines, L / 70)
     bg_lines = _dog_lines(gray, sigma * 1.5, bg_r, 0.6 * background)
     bg_lines = _clean(bg_lines, L / 12)
-    # shrink face ovals slightly so hairline edges outside the face survive
-    erase = cv2.erode(face_fill, np.ones((stroke, stroke), np.uint8))
+    erase = cv2.erode(lower_face, np.ones((3, 3), np.uint8))
     lines = (in_lines | bg_lines) & (erase == 0)
 
     out = np.zeros((h, w), np.uint8)
     out[skeletonize(lines)] = 255
     out = cv2.dilate(out, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (stroke, stroke)))
 
-    # bold person outline
     if person.any():
         cs, _ = cv2.findContours(person, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
         cs = [cv2.approxPolyDP(c, L / 800, True) for c in cs]
-        cv2.polylines(out, cs, True, 255, int(stroke * 1.4), cv2.LINE_AA)
+        cv2.polylines(out, cs, True, 255, outline, cv2.LINE_AA)
 
-    # drawn facial features
+    # clear any outline/edge pixels that crossed a lower face, then draw
+    # features with thin, print-sized lines
+    out[erase > 0] = 0
     for pts in faces:
-        fw = np.ptp(pts[:, 0])
-        fs = int(np.clip(fw / 45, stroke * 0.7, stroke * 1.2))
-        small = fw < L / 14
-        def poly(idx, closed=False, th=fs):
-            cv2.polylines(out, [pts[idx].round().astype(np.int32)], closed, 255, max(2, th), cv2.LINE_AA)
+        face_mm = np.ptp(pts[:, 0]) * px_mm
+        small = face_mm < 30
+
+        def line(idx, th=feat, closed=False):
+            cv2.polylines(out, [pts[idx].round().astype(np.int32)], closed, 255, th, cv2.LINE_AA)
+
+        eye_y = pts[R_EYE_UPPER + L_EYE_UPPER, 1].mean()
         for ch in _CHAINS["oval"]:
-            poly(ch, th=int(stroke * 1.2))
-        for k in ("l_brow", "r_brow"):
-            for ch in _CHAINS[k]:
-                poly(ch)
-        for k in ("l_eye", "r_eye"):
-            for ch in _CHAINS[k]:
-                poly(ch)
-        if not small and len(pts) > 470:          # irises (refined landmarks)
-            for c in (468, 473):
-                r = max(2, int(np.linalg.norm(pts[c + 1] - pts[c + 3]) / 2.2))
-                cv2.circle(out, tuple(pts[c].round().astype(int)), r, 255, -1, cv2.LINE_AA)
-        poly(NOSE_BOTTOM)
-        if not small:
-            for ch in _CHAINS["lips"]:
-                poly(ch)
+            for run in _lower_oval(pts, ch, eye_y):
+                line(run, th=stroke)
+        line(R_BROW); line(L_BROW)
+        if small:
+            # simplified face: upper eyelids, nose tip, single mouth line
+            line(R_EYE_UPPER); line(L_EYE_UPPER)
+            line(NOSE_SMALL)
+            line(MOUTH_LINE)
         else:
-            poly(MOUTH_LINE)
+            for k in ("l_eye", "r_eye"):
+                for ch in _CHAINS[k]:
+                    line(ch)
+            if len(pts) > 470:
+                for c in (468, 473):
+                    r = max(2, int(np.linalg.norm(pts[c + 1] - pts[c + 3]) / 2.6))
+                    cv2.circle(out, tuple(pts[c].round().astype(int)), r, 255, -1, cv2.LINE_AA)
+            line(NOSE_BOTTOM)
+            for ch in _CHAINS["lips"]:
+                line(ch)
 
     out = (out > 127).astype(np.uint8) * 255
     return out, {"faces": len(faces), "person_found": bool(person.any())}

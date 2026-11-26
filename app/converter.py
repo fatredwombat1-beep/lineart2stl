@@ -72,7 +72,8 @@ def _mask_from_image(data: bytes, s: Settings) -> np.ndarray:
         g = cv2.GaussianBlur(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (5, 5), 0)
         _, mask = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     else:
-        mask, info = photo_to_mask(img, s.detail, s.background)
+        est_px_mm = max(s.width_mm - 2 * s.frame_mm, 10) / img.shape[1]
+        mask, info = photo_to_mask(img, s.detail, s.background, est_px_mm)
         s._photo_info = info
     # remove single-pixel noise, close pinholes
     k3 = np.ones((3, 3), np.uint8)
