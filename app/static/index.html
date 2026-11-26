@@ -58,9 +58,13 @@
         <legend>Image type</legend>
         <div class="seg">
           <label><input type="radio" name="mode" value="lineart" checked><span>Line art</span></label>
-          <label><input type="radio" name="mode" value="photo"><span>Photo (experimental)</span></label>
+          <label><input type="radio" name="mode" value="photo"><span>Photo</span></label>
         </div>
-        <div id="photoOpts" class="row"><label>Line detail (1–10)</label><input type="number" name="detail" value="5" min="1" max="10" step="1"></div>
+        <div id="photoOpts">
+          <div class="row"><label>Detail on people (1–10)</label><input type="number" name="detail" value="5" min="1" max="10" step="1"></div>
+          <div class="row"><label>Background lines (0–10)</label><input type="number" name="background" value="3" min="0" max="10" step="1"></div>
+          <p class="hint">Faces are drawn from detected landmarks; people get a bold outline; the background is reduced to a few long lines.</p>
+        </div>
       </fieldset>
 
       <fieldset>
@@ -108,7 +112,7 @@ document.addEventListener('dragover', e => e.preventDefault());
 document.addEventListener('drop', e => { e.preventDefault(); if (e.target.closest('#drop') === null) pick(e.dataTransfer.files[0]); });
 
 document.querySelectorAll('input[name=mode]').forEach(r => r.onchange = () =>
-  $('#photoOpts').style.display = $('input[name=mode]:checked').value === 'photo' ? 'flex' : 'none');
+  $('#photoOpts').style.display = $('input[name=mode]:checked').value === 'photo' ? 'block' : 'none');
 
 $('#f').onsubmit = async ev => {
   ev.preventDefault();
@@ -130,6 +134,7 @@ $('#f').onsubmit = async ev => {
         <span>Specks removed <b>${s.specks_removed}</b></span>
         <span>Islands bridged <b>${s.islands_joined}</b></span>
         <span>Single piece <b>${s.single_piece ? 'yes' : 'no'}</b></span>
+        ${s.photo ? `<span>Faces found <b>${s.photo.faces}</b></span>` : ''}
       </div>
       ${s.thin_check !== 'ok' ? `<div class="warn">⚠ ${s.thin_check}</div>` : ''}
       <a class="dl" href="${j.stl_url}" download>Download STL</a>`;

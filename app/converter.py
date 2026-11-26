@@ -17,6 +17,8 @@ from shapely import affinity, make_valid
 from shapely.geometry import LineString, MultiPolygon, Polygon, box
 from shapely.ops import nearest_points, unary_union
 
+from portrait import photo_to_mask
+
 
 @dataclass
 class Settings:
@@ -30,7 +32,8 @@ class Settings:
     invert: bool = False         # set if image is light lines on dark
     crop: bool = True            # crop to drawing before adding frame
     absorb_border: bool = True   # merge a border already drawn in the image into the frame
-    detail: int = 5              # photo mode only: 1 (less) .. 10 (more lines)
+    detail: int = 5              # photo mode only: detail on people 1..10
+    background: int = 3          # photo mode only: background lines 0 (none)..10
 
     def clamp(self) -> "Settings":
         self.mode = "photo" if self.mode == "photo" else "lineart"
@@ -41,6 +44,7 @@ class Settings:
         self.bridge_mm = min(max(self.bridge_mm, 0.4), 10)
         self.frame_mm = min(max(self.frame_mm, 0), 50)
         self.detail = int(min(max(self.detail, 1), 10))
+        self.background = int(min(max(self.background, 0), 10))
         return self
 
 
@@ -54,10 +58,10 @@ MAX_ISLANDS = 1500     # safety valve for very noisy images
 
 # ---------------------------------------------------------------- image -> mask
 def _mask_from_image(data: bytes, s: Settings) -> np.ndarray:
-    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_GRAYSCALE)
+    img = cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
     if img is None:
         raise ConversionError("Could not read that file as an image.")
-    h, w = img.shape
+    h, w = img.shape[:2]
     scale = MAX_PX / max(h, w)
     img = cv2.resize(img, None, fx=scale, fy=scale,
                      interpolation=cv2.INTER_CUBIC if scale > 1 else cv2.INTER_AREA)
@@ -65,18 +69,11 @@ def _mask_from_image(data: bytes, s: Settings) -> np.ndarray:
         img = 255 - img
 
     if s.mode == "lineart":
-        img = cv2.GaussianBlur(img, (5, 5), 0)
-        _, mask = cv2.threshold(img, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
+        g = cv2.GaussianBlur(cv2.cvtColor(img, cv2.COLOR_BGR2GRAY), (5, 5), 0)
+        _, mask = cv2.threshold(g, 0, 255, cv2.THRESH_BINARY_INV + cv2.THRESH_OTSU)
     else:
-        # Experimental photo mode: smoothed edges, dilated into printable strokes.
-        sm = cv2.bilateralFilter(img, 9, 60, 60)
-        sm = cv2.bilateralFilter(sm, 9, 60, 60)
-        med = float(np.median(sm))
-        k = 1.6 - 0.12 * s.detail                  # detail 1 -> few lines, 10 -> many
-        lo, hi = max(0, k * 0.5 * med), min(255, k * med)
-        edges = cv2.Canny(sm, lo, hi)
-        stroke = max(3, MAX_PX // 300)
-        mask = cv2.dilate(edges, cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (stroke, stroke)))
+        mask, info = photo_to_mask(img, s.detail, s.background)
+        s._photo_info = info
     # remove single-pixel noise, close pinholes
     k3 = np.ones((3, 3), np.uint8)
     mask = cv2.morphologyEx(mask, cv2.MORPH_OPEN, k3)
@@ -269,6 +266,7 @@ def convert(data: bytes, s: Settings) -> dict:
         "watertight": bool(mesh.is_watertight),
         "thin_check": thin,
         "settings": asdict(s),
+        "photo": getattr(s, "_photo_info", None),
     }
     return {"stl": stl, "preview": _preview(body, bridges), "stats": stats}
 

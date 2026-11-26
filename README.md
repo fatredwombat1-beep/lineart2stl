@@ -10,7 +10,12 @@ What it does to the image:
 5. Joins every floating piece (eyes, logos and so on) to the main body with short bridges (minimum spanning tree, default 1 mm wide).
 6. Extrudes the result into a watertight STL and makes a preview, with the bridges shown in red.
 
-"Photo" mode is experimental. It uses edge detection, so results depend heavily on the photo. Clean, high-contrast line drawings work best.
+**Photo mode** turns a photo into a colouring-page style drawing before the steps above:
+- **Faces** are found with MediaPipe, and the jawline, brows, eyes, irises, nose and lips are drawn as clean lines from the face landmarks.
+- **People** get a bold outline from person segmentation, plus some interior detail (clothing folds and hands), controlled by *Detail on people*.
+- **The background** is reduced to a few long lines (*Background lines*, 0 = none), so the scene is hinted at rather than traced.
+
+Photo mode works best on photos with a few people who are reasonably close to the camera. Very small faces get simplified features.
 
 ## Run on Unraid (shows in the Docker tab)
 

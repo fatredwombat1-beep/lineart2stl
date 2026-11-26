@@ -55,6 +55,7 @@ def api_convert(
     crop: bool = Form(True),
     absorb_border: bool = Form(True),
     detail: int = Form(5),
+    background: int = Form(3),
 ):
     _cleanup()
     data = file.file.read(int(MAX_UPLOAD_MB * 1024 * 1024) + 1)
@@ -62,7 +63,8 @@ def api_convert(
         raise HTTPException(413, f"File is larger than {MAX_UPLOAD_MB:g} MB.")
     s = Settings(mode=mode, width_mm=width_mm, thickness_mm=thickness_mm, thicken_mm=thicken_mm,
                  min_speck_mm2=min_speck_mm2, bridge_mm=bridge_mm, frame_mm=frame_mm,
-                 invert=invert, crop=crop, absorb_border=absorb_border, detail=detail)
+                 invert=invert, crop=crop, absorb_border=absorb_border, detail=detail,
+                 background=background)
     if not _slots.acquire(timeout=120):
         raise HTTPException(503, "Server busy - try again shortly.")
     try:

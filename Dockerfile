@@ -1,11 +1,19 @@
-FROM python:3.13-slim
+# Python 3.12: mediapipe 0.10.21 is the last release that bundles the
+# face/segmentation models used by photo mode.
+FROM python:3.12-slim
 
 ENV PYTHONDONTWRITEBYTECODE=1 PYTHONUNBUFFERED=1 \
-    DATA_DIR=/data KEEP_HOURS=24 MAX_UPLOAD_MB=25 MAX_CONCURRENT=2
+    DATA_DIR=/data KEEP_HOURS=24 MAX_UPLOAD_MB=25 MAX_CONCURRENT=2 \
+    MPLCONFIGDIR=/tmp/mpl GLOG_minloglevel=2 TF_CPP_MIN_LOG_LEVEL=2
 
 WORKDIR /app
 COPY requirements.txt .
-RUN pip install --no-cache-dir -r requirements.txt
+# mediapipe pulls in the GUI build of OpenCV (needs libGL) and JAX (unused, ~350 MB):
+# swap in headless OpenCV and drop JAX.
+RUN pip install --no-cache-dir -r requirements.txt && \
+    pip uninstall -y opencv-contrib-python opencv-python jax jaxlib && \
+    pip install --no-cache-dir --no-deps --force-reinstall opencv-contrib-python-headless==4.11.0.86 && \
+    python -c "import cv2, mediapipe, skimage, shapely, trimesh, manifold3d; mediapipe.solutions.face_mesh"
 
 COPY app/ /app/
 RUN useradd -u 99 -g 100 -M -s /usr/sbin/nologin app && \
