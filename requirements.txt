@@ -1,0 +1,8 @@
+fastapi==0.165.0
+uvicorn[standard]==0.54.0
+python-multipart==0.0.32
+opencv-python-headless==5.0.0.93
+numpy==2.5.3
+shapely==2.2.0
+trimesh==5.2.2
+manifold3d==3.5.5

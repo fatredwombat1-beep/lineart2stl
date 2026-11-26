@@ -1,0 +1,14 @@
+services:
+  lineart2stl:
+    build: .
+    image: lineart2stl:latest
+    container_name: lineart2stl
+    ports:
+      - "8085:8080"          # change 8085 if that port is taken
+    volumes:
+      - /mnt/user/appdata/lineart2stl:/data
+    environment:
+      - KEEP_HOURS=24        # how long generated files are kept
+      - MAX_UPLOAD_MB=25
+      - MAX_CONCURRENT=2
+    restart: unless-stopped
