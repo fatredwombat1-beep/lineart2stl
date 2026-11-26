@@ -12,19 +12,32 @@ What it does to the image:
 
 "Photo" mode is experimental. It uses edge detection, so results depend heavily on the photo. Clean, high-contrast line drawings work best.
 
-## Run on Unraid
+## Run on Unraid (shows in the Docker tab)
 
-1. Copy this folder to the server, e.g. `/mnt/user/appdata/lineart2stl-src/`.
-2. In the Unraid terminal:
+1. In the Unraid terminal, get the code, build the image and install the template:
    ```bash
-   cd /mnt/user/appdata/lineart2stl-src
-   docker compose up -d --build
+   cd /mnt/user/appdata
+   git clone https://github.com/fatredwombat1-beep/lineart2stl.git lineart2stl-src
+   cd lineart2stl-src
+   docker build -t lineart2stl:latest .
+   cp unraid/lineart2stl.xml /boot/config/plugins/dockerMan/templates-user/my-lineart2stl.xml
    ```
-   (Compose is built into Unraid 7. On Unraid 6 use the *Compose Manager* plugin, or
-   `docker build -t lineart2stl . && docker run -d --name lineart2stl -p 8085:8080 -v /mnt/user/appdata/lineart2stl:/data --restart unless-stopped lineart2stl`.)
-3. Open `http://<server-ip>:8085`.
+2. In the web GUI go to **Docker → Add Container**, pick **lineart2stl** from the *Template*
+   dropdown (under User templates), check the port and path, then click **Apply**.
+3. Click the container icon → **WebUI**, or open `http://<server-ip>:8085`.
 
-To update after editing the code, run `docker compose up -d --build` again.
+The container then works like any other in the Docker tab: start and stop, logs, Edit, autostart and the WebUI link.
+Because the image is built locally, Unraid's update check shows "not available". That's expected.
+
+**Updating:**
+```bash
+cd /mnt/user/appdata/lineart2stl-src && git pull && docker build -t lineart2stl:latest .
+```
+Then click the container → **Edit** → **Apply** (no changes needed) to recreate it on the new image.
+
+### Alternative: Docker Compose
+Unraid doesn't come with Compose. Install the **Compose Manager Plus** plugin from Community Apps first,
+then run `docker compose up -d --build` in this folder. Compose containers show in the plugin's own section of the Docker tab.
 
 ## Settings (environment variables)
 

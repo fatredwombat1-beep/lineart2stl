@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<Container version="2">
+  <Name>lineart2stl</Name>
+  <Repository>lineart2stl:latest</Repository>
+  <Registry/>
+  <Network>bridge</Network>
+  <MyIP/>
+  <Shell>sh</Shell>
+  <Privileged>false</Privileged>
+  <Support>https://github.com/fatredwombat1-beep/lineart2stl</Support>
+  <Project>https://github.com/fatredwombat1-beep/lineart2stl</Project>
+  <Overview>Drop in a line-art JPEG/PNG and download a single-piece, printable STL outline (specks removed, floating parts bridged, optional solid frame). Image is built locally from the GitHub repo.</Overview>
+  <Category>Tools:</Category>
+  <WebUI>http://[IP]:[PORT:8080]/</WebUI>
+  <TemplateURL/>
+  <Icon>https://raw.githubusercontent.com/fatredwombat1-beep/lineart2stl/main/unraid/icon.png</Icon>
+  <ExtraParams>--restart unless-stopped</ExtraParams>
+  <PostArgs/>
+  <CPUset/>
+  <DonateText/>
+  <DonateLink/>
+  <Requires>Build the image first: cd /mnt/user/appdata/lineart2stl-src &amp;&amp; docker build -t lineart2stl:latest .</Requires>
+  <Config Name="Web UI port" Target="8080" Default="8085" Mode="tcp" Description="Port for the web interface" Type="Port" Display="always" Required="true" Mask="false">8085</Config>
+  <Config Name="Data" Target="/data" Default="/mnt/user/appdata/lineart2stl" Mode="rw" Description="Generated STL and preview files (auto-deleted after KEEP_HOURS)" Type="Path" Display="always" Required="true" Mask="false">/mnt/user/appdata/lineart2stl</Config>
+  <Config Name="KEEP_HOURS" Target="KEEP_HOURS" Default="24" Mode="" Description="Hours to keep generated files" Type="Variable" Display="advanced" Required="false" Mask="false">24</Config>
+  <Config Name="MAX_UPLOAD_MB" Target="MAX_UPLOAD_MB" Default="25" Mode="" Description="Upload size limit (MB)" Type="Variable" Display="advanced" Required="false" Mask="false">25</Config>
+  <Config Name="MAX_CONCURRENT" Target="MAX_CONCURRENT" Default="2" Mode="" Description="Simultaneous conversions" Type="Variable" Display="advanced" Required="false" Mask="false">2</Config>
+</Container>
