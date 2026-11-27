@@ -50,6 +50,7 @@ def api_convert(
     thicken_mm: float = Form(0.4),
     min_speck_mm2: float = Form(1.0),
     bridge_mm: float = Form(1.0),
+    merge_mm: float = Form(0.6),
     frame_mm: float = Form(4.0),
     invert: bool = Form(False),
     crop: bool = Form(True),
@@ -63,7 +64,7 @@ def api_convert(
     if len(data) > MAX_UPLOAD_MB * 1024 * 1024:
         raise HTTPException(413, f"File is larger than {MAX_UPLOAD_MB:g} MB.")
     s = Settings(mode=mode, width_mm=width_mm, thickness_mm=thickness_mm, thicken_mm=thicken_mm,
-                 min_speck_mm2=min_speck_mm2, bridge_mm=bridge_mm, frame_mm=frame_mm,
+                 min_speck_mm2=min_speck_mm2, bridge_mm=bridge_mm, merge_mm=merge_mm, frame_mm=frame_mm,
                  invert=invert, crop=crop, absorb_border=absorb_border, detail=detail,
                  background=background, style=style)
     if not _slots.acquire(timeout=120):

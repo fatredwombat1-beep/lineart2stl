@@ -29,6 +29,7 @@ class Settings:
     thicken_mm: float = 0.4      # extra line width (total, both sides)
     min_speck_mm2: float = 1.0   # pieces smaller than this are removed
     bridge_mm: float = 1.0       # bridge width
+    merge_mm: float = 0.6        # photo mode only: gaps narrower than this are closed before bridging
     frame_mm: float = 4.0        # solid frame width, 0 = no frame
     invert: bool = False         # set if image is light lines on dark
     crop: bool = True            # crop to drawing before adding frame
@@ -44,6 +45,7 @@ class Settings:
         self.thicken_mm = min(max(self.thicken_mm, 0), 5)
         self.min_speck_mm2 = min(max(self.min_speck_mm2, 0), 500)
         self.bridge_mm = min(max(self.bridge_mm, 0.4), 10)
+        self.merge_mm = min(max(self.merge_mm, 0), 5)
         self.frame_mm = min(max(self.frame_mm, 0), 50)
         self.detail = int(min(max(self.detail, 1), 10))
         self.background = int(min(max(self.background, 0), 10))
@@ -218,6 +220,10 @@ def convert(data: bytes, s: Settings) -> dict:
 
     if s.thicken_mm > 0:
         geom = geom.buffer(s.thicken_mm / 2, join_style=1)
+    if s.mode == "photo" and s.merge_mm > 0:
+        # fuse pieces that almost touch, so they join the line instead of getting
+        # a bridge each (photo mode leaves many near-touching dashes on faces)
+        geom = geom.buffer(s.merge_mm / 2, join_style=1).buffer(-s.merge_mm / 2, join_style=1)
     # keep inside the drawing area
     geom = geom.intersection(box(0, 0, cw, ch))
 

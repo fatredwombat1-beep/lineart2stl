@@ -69,7 +69,7 @@ The container runs as `99:100` (nobody:users), which matches Unraid appdata perm
 ## API
 
 `POST /api/convert` (multipart form): `file` plus any of `mode`, `width_mm`, `thickness_mm`,
-`thicken_mm`, `min_speck_mm2`, `bridge_mm`, `frame_mm`, `invert`, `crop`, `absorb_border`, `detail`.
+`thicken_mm`, `min_speck_mm2`, `bridge_mm`, `merge_mm`, `frame_mm`, `invert`, `crop`, `absorb_border`, `detail`.
 Returns JSON with `stl_url`, `preview_url` and `stats`.
 
 ```bash
