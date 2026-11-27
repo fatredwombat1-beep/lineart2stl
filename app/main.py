@@ -55,7 +55,7 @@ def api_convert(
     crop: bool = Form(True),
     absorb_border: bool = Form(True),
     detail: int = Form(5),
-    background: int = Form(3),
+    background: int = Form(5),
     style: str = Form("fine"),
 ):
     _cleanup()

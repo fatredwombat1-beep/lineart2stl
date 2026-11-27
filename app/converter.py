@@ -34,7 +34,7 @@ class Settings:
     crop: bool = True            # crop to drawing before adding frame
     absorb_border: bool = True   # merge a border already drawn in the image into the frame
     detail: int = 5              # photo mode only: detail on people 1..10
-    background: int = 3          # photo mode only: background lines 0 (none)..10
+    background: int = 5          # photo mode only: background lines 0 (none)..10
     style: str = "fine"          # photo mode only: "fine" / "bold" (AI line art) or "classic"
 
     def clamp(self) -> "Settings":

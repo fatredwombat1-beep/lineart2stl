@@ -52,7 +52,7 @@ def _infer(bgr, style, long_side):
     return cv2.resize(strength, (w, h), interpolation=cv2.INTER_CUBIC)
 
 
-def photo_to_mask(bgr: np.ndarray, detail: int = 5, background: int = 3,
+def photo_to_mask(bgr: np.ndarray, detail: int = 5, background: int = 5,
                   px_mm: float = 0.1, style: str = "fine"):
     """detail 1..10 -> network resolution (more detail = finer, more lines).
     background 0..10 -> how many lines to keep outside the people (10 = all)."""
@@ -80,6 +80,16 @@ def photo_to_mask(bgr: np.ndarray, detail: int = 5, background: int = 3,
         info["person_found"] = person is not None
         if person is not None:
             near = cv2.dilate(person, np.ones((L // 100 | 1, L // 100 | 1), np.uint8)) > 0
+            # long straight verticals off the people (door edges, downpipes) read as
+            # noise; brick courses and the ground are mostly horizontal and stay
+            off = skeletonize(lines & ~near).astype(np.uint8) * 255
+            segs = cv2.HoughLinesP(off, 2, np.pi / 180, threshold=L // 40,
+                                   minLineLength=L // 14, maxLineGap=L // 50)
+            vert = np.zeros((h, w), np.uint8)
+            for x1, y1, x2, y2 in (segs[:, 0] if segs is not None else []):
+                if abs(x2 - x1) <= abs(y2 - y1) * np.tan(np.radians(8)):
+                    cv2.line(vert, (int(x1), int(y1)), (int(x2), int(y2)), 255, max(3, L // 250))
+            lines = lines & ~((vert > 0) & ~near)
             n, lab, st, _ = cv2.connectedComponentsWithStats(lines.astype(np.uint8), connectivity=8)
             # fraction of each stroke lying on a person
             on = np.bincount(lab[near].ravel(), minlength=n)

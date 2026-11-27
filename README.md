@@ -16,7 +16,7 @@ What it does to the image:
   Hugging Face and converted to ONNX **while the image builds**, so the server needs internet access during
   `docker build`. It runs on the CPU and takes a few seconds per image.
   - *Detail* sets the resolution the network works at. Higher gives finer lines and more of them.
-  - *Background lines* uses person segmentation to thin out lines that aren't on a person (0 = people only, 10 = everything).
+  - *Background lines* uses person segmentation to thin out lines that aren't on a person (0 = people only, 10 = everything; default 5). Below 10 it also drops long straight vertical lines in the background (door edges, downpipes).
 - **Classic**: the earlier approach, with no network. Faces are drawn from MediaPipe landmarks and people are outlined.
 
 ## Run on Unraid (shows in the Docker tab)
