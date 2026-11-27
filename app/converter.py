@@ -201,7 +201,8 @@ def _connect(parts, width):
         cand = np.where(in_tree, np.inf, best)
         i = int(np.argmin(cand))
         in_tree[i] = True
-        br, _ = _bridge(parts[i], parts[link[i]], width)
+        # simplified shapes are within 0.1 mm; the bridge reaches 0.3 mm into both
+        br, _ = _bridge(simp[i], simp[link[i]], width)
         bridges.append(br)
         relax(i)
     return bridges
@@ -260,6 +261,15 @@ def convert(data: bytes, s: Settings) -> dict:
     body = ps[0]
     # reduce vertex count (smaller STL) and make sure the outline is clean
     body = sorted(_polys(make_valid(body.simplify(0.03).buffer(0))), key=lambda p: -p.area)[0]
+    # Reinforce joins under 0.6 mm (strokes that only just touch, merged gaps,
+    # bridge ends on tapered tips): wherever the outline falls apart when shrunk
+    # by 0.3 mm, bridge the pieces of that core together. Done after simplify:
+    # buffering the raw union is very slow.
+    core = sorted(_polys(body.buffer(-0.3)), key=lambda p: -p.area)
+    if len(core) > 1:
+        extra = _connect(core, s.bridge_mm)
+        bridges += extra
+        body = sorted(_polys(make_valid(unary_union([body] + extra))), key=lambda p: -p.area)[0]
 
     # move to positive coordinates
     minx, miny, _, _ = body.bounds
