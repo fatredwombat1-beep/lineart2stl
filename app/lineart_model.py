@@ -17,6 +17,10 @@ from skimage.morphology import skeletonize
 MODEL_DIR = os.environ.get("MODEL_DIR", os.path.join(os.path.dirname(__file__), "models"))
 _sessions: dict = {}
 _lock = threading.Lock()
+# Added to the Otsu threshold. Measured on the real weights, Otsu sits near 0.41
+# (fine) / 0.43 (bold) at every detail level; fine needs a lower cut to keep
+# glasses, eyes and mouths unbroken.
+THRESH_OFFSET = {"fine": -0.06, "bold": 0.0}
 
 
 def available(style: str = "fine") -> bool:
@@ -60,7 +64,7 @@ def photo_to_mask(bgr: np.ndarray, detail: int = 5, background: int = 3,
     # threshold: Otsu on the line response, clamped to a sensible range
     s8 = (strength * 255).astype(np.uint8)
     t, _ = cv2.threshold(s8, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)
-    t = float(np.clip(t / 255, 0.25, 0.6))
+    t = float(np.clip(t / 255 + THRESH_OFFSET.get(style, 0.0), 0.25, 0.6))
     lines = strength > t
 
     info = {"engine": "lineart-" + style, "threshold": round(t, 2)}
