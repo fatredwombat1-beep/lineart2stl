@@ -125,9 +125,13 @@ def _mask_to_geometry(mask: np.ndarray, px_mm: float):
         holes, ch = [], hier[i][2]
         while ch != -1:
             if len(contours[ch]) >= 3:
-                holes.append(contours[ch][:, 0, :])
+                holes.append(make_valid(Polygon(contours[ch][:, 0, :])))
             ch = hier[ch][0]
-        polys += _polys(make_valid(Polygon(c[:, 0, :], holes)))
+        # Subtract holes rather than passing them to Polygon(): a hole that touches
+        # its outline (thin or diagonal line) makes the polygon invalid, and
+        # make_valid then fills the hole in (solid noses/mouths in photo mode).
+        shell = make_valid(Polygon(c[:, 0, :]))
+        polys += _polys(shell.difference(unary_union(holes)) if holes else shell)
     geom = unary_union(polys)
     H = mask.shape[0]
     # pixels -> mm, flip Y so the print isn't mirrored
